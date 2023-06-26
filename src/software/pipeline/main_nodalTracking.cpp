@@ -201,7 +201,23 @@ int aliceVision_main(int argc, char** argv)
             reconstructedPairs.insert(reconstructedPairs.end(), localVector.begin(), localVector.end());
         }
     }
+
+    //Sort all views by frame Id
+    std::vector<std::shared_ptr<sfmData::View>> sortedViews;
+    for (auto pv : sfmData.getViews())    
+    {
+        sortedViews.push_back(pv.second);
+    }
+
+    std::sort(sortedViews.begin(), sortedViews.end(), 
+        [](const std::shared_ptr<sfmData::View> & v1, const std::shared_ptr<sfmData::View> & v2) 
+        {
+            return v1->getFrameId() < v2->getFrameId();
+        });
     
+
+    
+
     sfmDataIO::Save(sfmData, sfmDataOutputFilename, sfmDataIO::ESfMData::ALL);
 
     return EXIT_SUCCESS;
