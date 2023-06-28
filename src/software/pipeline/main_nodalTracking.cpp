@@ -25,11 +25,15 @@
 #include <aliceVision/track/tracksUtils.hpp>
 #include <aliceVision/track/trackIO.hpp>
 
-#include <aliceVision/multiview/triangulation/triangulationDLT.hpp>
 
 #include <cstdlib>
 #include <random>
 #include <regex>
+
+/*#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/kruskal_min_spanning_tree.hpp>*/
 
 // These constants define the current software version.
 // They must be updated when the command line is changed.
@@ -202,23 +206,110 @@ int aliceVision_main(int argc, char** argv)
         }
     }
 
-    //Sort all views by frame Id
-    std::vector<std::shared_ptr<sfmData::View>> sortedViews;
-    for (auto pv : sfmData.getViews())    
+    if (reconstructedPairs.size() == 0)
     {
-        sortedViews.push_back(pv.second);
+        ALICEVISION_LOG_ERROR("No precomputed pairs found");
+        return EXIT_FAILURE;
     }
 
-    std::sort(sortedViews.begin(), sortedViews.end(), 
-        [](const std::shared_ptr<sfmData::View> & v1, const std::shared_ptr<sfmData::View> & v2) 
+    //Sort reconstructedPairs by quality
+    std::sort(reconstructedPairs.begin(), reconstructedPairs.end(), 
+        [](const sfm::ReconstructedPair& p1, const sfm::ReconstructedPair & p2)
         {
-            return v1->getFrameId() < v2->getFrameId();
-        });
-    
+            return p1.score > p2.score;
+        }
+    );
 
+
+    std::map<IndexT, Eigen::Matrix3d> reconstructedViews;
+
+    //Bootstrap
+    IndexT ref = reconstructedPairs[0].reference;
+    reconstructedViews[ref] = Eigen::Matrix3d::Identity();
     
+    for (const auto & pair : reconstructedPairs)
+    {
+        bool refFound = (reconstructedViews.find(pair.reference) != reconstructedViews.end());
+        bool nextFound = (reconstructedViews.find(pair.next) != reconstructedViews.end());
+
+        if (refFound && nextFound) continue;
+        if (!(refFound || nextFound)) continue;
+
+        IndexT newId = refFound ? pair.reference : pair.next;
+
+        for (const auto & otherView : reconstructedViews)
+        {
+            aliceVision::track::TracksMap mapTracksCommon;
+            track::getCommonTracksInImagesFast({newId, otherView.first}, mapTracks, mapTracksPerView, mapTracksCommon);
+        }
+    }
 
     sfmDataIO::Save(sfmData, sfmDataOutputFilename, sfmDataIO::ESfMData::ALL);
 
     return EXIT_SUCCESS;
 }
+
+
+/*struct VertexProperties
+    {
+        IndexT viewId;
+    };
+
+
+    typedef boost::property<boost::edge_weight_t, double> EdgeWeightProperty;
+    typedef boost::property<boost::vertex_name_t, IndexT> vertex_property_t;
+    typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, VertexProperties, EdgeWeightProperty> graph_t;
+    typedef graph_t::vertex_descriptor vertex_t;
+    typedef graph_t::edge_descriptor edge_t;
+    typedef boost::graph_traits<graph_t>::edge_iterator edge_iter;
+
+    graph_t g; 
+
+    boost::property_map< graph_t, boost::edge_weight_t >::type weight = boost::get(boost::edge_weight, g);
+
+    std::set<IndexT> roots;
+    std::map<IndexT, vertex_t> nodes;
+    std::map<vertex_t, IndexT> nodes_inverse;
+    for (const auto& pv : sfmData.getViews())
+    {
+        vertex_t id = boost::add_vertex({ pv.first }, g);
+
+        nodes[pv.first] = id;
+        nodes_inverse[id] = pv.first;
+    }
+
+    for (const auto & pr : reconstructedPairs)
+    {
+        const vertex_t & v1 = nodes[pr.reference];
+        const vertex_t & v2 = nodes[pr.next];
+
+        boost::add_edge(v1, v2, {1.0 - pr.score}, g);
+
+        roots.insert(v1);
+        roots.insert(v2);
+    }
+    
+    std::vector<edge_t> spanning_tree;
+    boost::kruskal_minimum_spanning_tree(g, std::back_inserter(spanning_tree));
+
+    std::map<IndexT, std::vector<IndexT>> tree;
+    
+    std::set<IndexT> uniques;
+    for (std::vector<edge_t>::iterator ei = spanning_tree.begin(); ei != spanning_tree.end(); ++ei)
+    {
+        vertex_t v1 = source(*ei, g); 
+        vertex_t v2 = target(*ei, g);
+        IndexT vid1 = nodes_inverse[v1];
+        IndexT vid2 = nodes_inverse[v2];
+
+        if (uniques.find(v2) != uniques.end())
+        {
+            std::cout << "what" << std::endl;
+        }
+        uniques.insert(v2);
+
+        tree[vid1].push_back(vid2);
+        roots.erase(vid2);
+    }
+
+    std::cout << spanning_tree.size() << " " << tree.size() << std::endl;*/
