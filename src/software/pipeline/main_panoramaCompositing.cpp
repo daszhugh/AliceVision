@@ -404,7 +404,7 @@ bool processImage(const PanoramaMap& panoramaMap, const sfmData::SfMData& sfmDat
         colorSpace = srcMetadata.get_string("AliceVision:ColorSpace", "Linear");
     }
 
-#pragma omp parallel for
+//#pragma omp parallel for
     for(int posCurrent = 0; posCurrent < overlappingViews.size(); posCurrent++)
     {
         IndexT viewCurrent = overlappingViews[posCurrent];
