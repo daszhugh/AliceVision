@@ -180,8 +180,13 @@ bool estimate(std::shared_ptr<camera::Undistortion> undistortionToEstimate,
 
         if (!constantDistortions.empty())
         {
+#if ALICEVISION_CERES_HAS_MANIFOLD
             ceres::SubsetManifold* subsetManifold = new ceres::SubsetManifold(countUndistortionParams, constantDistortions);
             problem.SetManifold(ptrUndistortionParameters, subsetManifold);
+#else
+            ceres::SubsetParameterization* subsetParameterization = new ceres::SubsetParameterization(countUndistortionParams, constantDistortions);
+            problem.SetParameterization(ptrUndistortionParameters, subsetParameterization);
+#endif
         }
     }
 
