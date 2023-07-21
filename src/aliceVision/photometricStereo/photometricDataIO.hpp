@@ -63,6 +63,9 @@ void buildLightMatFromJSON(const std::string& fileName, const std::vector<std::s
 void buildLightMatFromJSON(const std::string& fileName, const std::vector<IndexT>& indices, Eigen::MatrixXf& lightMat,
                            std::vector<std::array<float, 3>>& intList);
 
+void buildLightMatFromLP(const std::string& fileName, const std::vector<std::string>& imageList,
+                         Eigen::MatrixXf& lightMat, std::vector<std::array<float, 3>>& intList);
+
 /**
  * @brief Load a mask
  * @param[in] maskName Path to mask
