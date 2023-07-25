@@ -397,8 +397,8 @@ bool KeyframeSelector::computeScores(const std::size_t rescaledWidthSharpness, c
                         // Will throw an exception if next frame is also invalid
                         currentMatSharpness = readImage(feed, rescaledWidthSharpness);
                         // If no exception has been thrown, push dummy scores for the frame that was skipped
-                        _sharpnessScores.push_back(-1.f);
-                        _flowScores.push_back(-1.f);
+                        _sharpnessScores[currentFrame] = -1.f;
+                        _flowScores[currentFrame] = -1.f;
                     } else
                         ALICEVISION_THROW_ERROR("Could not go to frame " << currentFrame + 1
                                                 << " either. The feed might be corrupted.");
@@ -432,8 +432,8 @@ bool KeyframeSelector::computeScores(const std::size_t rescaledWidthSharpness, c
         }
 
         // Save scores for the current frame
-        _sharpnessScores.push_back(minimalSharpness);
-        _flowScores.push_back(currentFrame > 0 ? minimalFlow : -1.f);
+        _sharpnessScores[currentFrame] = minimalSharpness;
+        _flowScores[currentFrame] = currentFrame > 0 ? minimalFlow : -1.f;
         ++currentFrame;
     }
 
